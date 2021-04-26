@@ -54,12 +54,57 @@ timestamp=$(date '+%d%m%Y-%H%M%S')
 cd /var/log/apache2
 sudo tar -cvf /tmp/${myname}-httpd-logs-$timestamp.tar *.log
 
-# Installing awscli 
+# Bookkeeping
+
+mysize=$(stat -c%s /tmp/${myname}-httpd-logs-$timestamp.tar)
+if [ -f /var/www/html/inventory.html ] 
+then
+sudo echo '<br> httpd-logs' >> /var/www/html/inventory.html
+sudo echo '&ensp;' $timestamp >> /var/www/html/inventory.html
+sudo echo '&ensp;' 'tar' >> /var/www/html/inventory.html
+sudo echo '&emsp;' $mysize 'Bytes'>> /var/www/html/inventory.html
+else
+sudo touch /var/www/html/inventory.html
+sudo chmod 777 /var/www/html/inventory.html
+sudo echo "<!DOCTYPE html>
+<html>
+   <head></head>
+   <body>
+      <header>
+<b>Date &emsp;&emsp;&emsp;
+Created &emsp;&emsp;&emsp;&emsp;
+Type &ensp;
+Size</b>
+  </header>
+   </body>
+</html>
+" >> /var/www/html/inventory.html
+sudo echo '<br> httpd-logs' >> /var/www/html/inventory.html
+sudo echo '&ensp;' $timestamp >> /var/www/html/inventory.html
+sudo echo '&ensp;' 'tar' >> /var/www/html/inventory.html
+sudo echo '&emsp;' $mysize 'Bytes'>> /var/www/html/inventory.html
+fi
+
+# Installing awscli
+
 sudo apt update
 sudo apt -y install awscli
-
 
 #Copy to s3 bucket
 aws s3 \
 cp /tmp/${myname}-httpd-logs-${timestamp}.tar \
 s3://${s3_bucket}/${myname}-httpd-logs-${timestamp}.tar
+
+#Create cron job
+
+if [ -f /etc/cron.d/automation ]
+then 
+	echo "Cron Job already scheduled for this script"
+else
+	touch /etc/cron.d/automation
+	chmod 777 /etc/cron.d/automation
+echo "Cron Job is creating"
+echo "36 1 * * * root /root/Automation_Project/automation.sh" >> /etc/cron.d/automation
+crontab /etc/cron.d/automation
+fi
+
